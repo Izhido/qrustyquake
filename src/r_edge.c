@@ -369,8 +369,8 @@ void R_GenerateSpansBackward()
 void R_ScanEdges()
 {
 	// Align the array itself to the cache size
-	byte basespans[MAXSPANS * sizeof(espan_t) + CACHE_SIZE]
-			__attribute__((aligned(CACHE_SIZE)));
+	byte basespans[MAXSPANS * sizeof(espan_t) + CACHE_SIZE]/*
+			__attribute__((aligned(CACHE_SIZE)))*/;
 	// Pointer to the aligned base of the spans
 	espan_t *basespan_p = (espan_t *) basespans;
 	// No more pointer adjustment needed because the array is aligned

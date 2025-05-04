@@ -10,11 +10,7 @@
 #include "quakedef.h"
 #include "r_local.h"
 
-#ifndef _WIN32
 #define	MAX_MOD_KNOWN 32768 /*johnfitz -- was 512 */
-#else
-#define	MAX_MOD_KNOWN 16384 /*johnfitz -- was 512 */
-#endif
 #define ANIM_CYCLE 2
 #define NL_PRESENT 0 // values for model_t's needload
 #define NL_NEEDS_LOADED 1
@@ -1406,7 +1402,7 @@ static void Mod_LoadFaces (lump_t *l, qboolean bsp2)
                 //out->samples = loadmodel->lightdata + lofs; // TODO colored lighting
 
 		//johnfitz -- this section rewritten
-		if (!strncasecmp(out->texinfo->texture->name,"sky",3)) // sky surface //also note -- was Q_strncmp, changed to match qbsp
+		if (!q_strncasecmp(out->texinfo->texture->name,"sky",3)) // sky surface //also note -- was Q_strncmp, changed to match qbsp
 		{
 			out->flags |= (SURF_DRAWSKY | SURF_DRAWTILED);
 			Mod_PolyForUnlitSurface (out); //no more subdivision
@@ -1435,6 +1431,10 @@ static void Mod_LoadFaces (lump_t *l, qboolean bsp2)
 			// lit water is handled in BuildSurfaceDisplayList
 			if (out->flags & SURF_DRAWTILED)
 			{
+				for (i = 0; i < 2; i++) {
+					out->extents[i] = 16384;
+					out->texturemins[i] = -8192;
+				}
 				Mod_PolyForUnlitSurface (out);
 				//GL_SubdivideSurface (out);
 			}
@@ -1942,7 +1942,7 @@ static FILE *Mod_FindVisibilityExternal()
 			fclose(f);
 			return NULL;
 		}
-		if (!strcasecmp(header.mapname, shortname))
+		if (!q_strcasecmp(header.mapname, shortname))
 			break;
 		pos += header.filelen + VISPATCH_HEADER_LEN;
 		fseek(f, pos, SEEK_SET);
@@ -2026,7 +2026,7 @@ static void Mod_LoadBrushModel (model_t *mod, void *buffer)
 	Mod_LoadFaces (&header->lumps[LUMP_FACES], bsp2);
 	Mod_LoadMarksurfaces (&header->lumps[LUMP_MARKSURFACES], bsp2);
 	if (mod->bspversion == BSPVERSION && external_vis.value &&
-			sv.modelname[0] && !strcasecmp(loadname, sv.name)) {
+			sv.modelname[0] && !q_strcasecmp(loadname, sv.name)) {
 		FILE *fvis;
 		Con_DPrintf("trying to open external vis file\n");
 		fvis = Mod_FindVisibilityExternal();

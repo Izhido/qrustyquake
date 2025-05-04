@@ -43,7 +43,7 @@ extern cmd_source_t cmd_source;
 
 void Cmd_Init ();
 void Cbuf_Init (); // allocates an initial text buffer that will grow as needed
-void Cbuf_AddText (char *text); // as new commands are generated from the
+void Cbuf_AddText (const char *text); // as new commands are generated from the
 // console or keybindings, the text is added to the end of the command buffer.
 void Cbuf_InsertText (char *text); // when a command wants to issue other 
 // commands immediately, the text is inserted at the beginning of the buffer,
@@ -55,8 +55,8 @@ void Cbuf_Execute (); // Pulls off \n terminated lines of text from the command
 void Cmd_AddCommand (char *cmd_name, xcommand_t function); // called by the init
 // functions of other parts of the program to register commands and functions to
 // call for them. cmd_name is referenced later so it shouldn't be in temp memory
-qboolean Cmd_Exists (char *cmd_name); // used by the cvar code to check for
-// cvar / command name overlap
+qboolean Cmd_Exists (const char *cmd_name); // used by the cvar code to check
+// for cvar / command name overlap
 char *Cmd_CompleteCommand (char *partial); // attempts to match a partial
 // command for automatic command line completion returns NULL if nothing fits
 int Cmd_Argc ();
@@ -64,9 +64,9 @@ char *Cmd_Argv (int arg);
 char *Cmd_Args (); // The functions that execute commands get their parameters
 // with these functions. Cmd_Argv () will return an empty string, not a NULL
 // if arg > argc, so string operations are allways safe.
-void Cmd_TokenizeString (char *text); // Takes a null terminated string. Does
+void Cmd_TokenizeString (const char *text); // Takes a null terminated string. Does
 // not need to be /n terminated. Breaks the string up into arg tokens.
-void Cmd_ExecuteString (char *text, cmd_source_t src); // Parses a single line
+void Cmd_ExecuteString (const char *text, cmd_source_t src); // Parses a single line
 // of text into arguments and tries to execute it. The text can come from the
 // command buffer, a remote client, or stdin.
 void Cmd_ForwardToServer (); // adds the current command line as a clc_stringcmd

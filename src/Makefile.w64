@@ -6,7 +6,7 @@ WINDRES=x86_64-w64-mingw32-windres
 STRIP=x86_64-w64-mingw32-strip
 PATH+=/opt/cross_win64/bin
 
-CFLAGS_BASE = --static -c -D_USE_WINSOCK2 -lws2_32 -m64 -Wall -D_FILE_OFFSET_BITS=64
+CFLAGS_BASE = --static -c -D_USE_WINSOCK2 -lws2_32 -m64 -Wall -D_FILE_OFFSET_BITS=64 -D_WINCROSS
 LDFLAGS_BASE = -lm -m64 -mwindows -static-libgcc -lmingw32 -lws2_32
 SDL_CFLAGS ?= -I../win/SDL2/include -D_REENTRANT
 SDL_LIBS ?= -L../win/SDL2/lib -lSDL2main -lSDL2

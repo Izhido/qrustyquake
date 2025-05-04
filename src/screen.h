@@ -4,7 +4,7 @@ void SCR_Init ();
 void SCR_UpdateScreen ();
 void SCR_SizeUp ();
 void SCR_SizeDown ();
-void SCR_CenterPrint (char *str);
+void SCR_CenterPrint (const char *str);
 void SCR_BeginLoadingPlaque ();
 void SCR_EndLoadingPlaque ();
 int SCR_ModalMessage (char *text);

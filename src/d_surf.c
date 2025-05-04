@@ -12,6 +12,7 @@ float surfscale;
 qboolean r_cache_thrash; // set if surface cache is thrashing
 unsigned long sc_size;
 surfcache_t *sc_rover, *sc_base;
+int lmonly; // render lightmap only, for lit water
 
 int D_SurfaceCacheForRes(int width, int height)
 {

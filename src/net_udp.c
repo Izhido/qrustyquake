@@ -30,9 +30,24 @@ sys_socket_t UDP_Init()
 	} else {
 		buff[MAXHOSTNAMELEN - 1] = 0;
 		if (!(local = gethostbyname(buff))) {
+#ifdef _WIN32
+			const char herrmsg[1024];
+			FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+				FORMAT_MESSAGE_FROM_SYSTEM | 
+				FORMAT_MESSAGE_IGNORE_INSERTS, 
+				NULL, 
+				h_errno, 
+				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), 
+				(LPWSTR)&herrmsg, 0, NULL);
+			Con_SafePrintf
+			("UDP_Init: WARNING: gethostbyname failed (%s)\n",
+				herrmsg);
+
+#else
 			Con_SafePrintf
 			    ("UDP_Init: WARNING: gethostbyname failed (%s)\n",
 			     hstrerror(h_errno));
+#endif
 		} else if (local->h_addrtype != AF_INET) {
 			Con_SafePrintf
 			    ("UDP_Init: address from gethostbyname not IPv4\n");
@@ -183,7 +198,7 @@ sys_socket_t UDP_CheckNewConnections()
 	char buff[1];
 	if (net_acceptsocket == INVALID_SOCKET)
 		return INVALID_SOCKET;
-	if (ioctl(net_acceptsocket, FIONREAD, &available) == -1) {
+	if (ioctlsocket(net_acceptsocket, FIONREAD, &available) == -1) {
 		int err = SOCKETERRNO;
 		Sys_Error("UDP: ioctlsocket (FIONREAD) failed (%s)",
 			  socketerror(err));

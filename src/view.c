@@ -33,8 +33,9 @@ cvar_t v_iroll_level = { "v_iroll_level", "0.1", false, false, 0, NULL };
 cvar_t v_ipitch_level = { "v_ipitch_level", "0.3", false, false, 0, NULL };
 cvar_t v_idlescale = { "v_idlescale", "0", false, false, 0, NULL };
 cvar_t crosshair = { "crosshair", "0", true, false, 0, NULL };
-cvar_t cl_crossx = { "cl_crossx", "0", false, false, 0, NULL };
-cvar_t cl_crossy = { "cl_crossy", "0", false, false, 0, NULL };
+cvar_t cl_crossx = { "cl_crossx", "0", true, false, 0, NULL };
+cvar_t cl_crossy = { "cl_crossy", "0", true, false, 0, NULL };
+cvar_t cl_crosschar = { "cl_crosschar", "43", true, false, 0, NULL };
 cvar_t gl_cshiftpercent = { "gl_cshiftpercent", "100", false, false, 0, NULL };
 cvar_t v_centermove = { "v_centermove", "0.15", false, false, 0, NULL };
 cvar_t v_centerspeed = { "v_centerspeed", "500", false, false, 0, NULL };
@@ -299,6 +300,7 @@ void V_CalcPowerupCshift()
 void V_UpdatePalette()
 {
 	V_CalcPowerupCshift();
+	float frametime = fabs (cl.time - cl.oldtime);
 	qboolean new = false;
 	for (int i = 0; i < NUM_CSHIFTS; i++) {
 		if (cl.cshifts[i].percent != cl.prev_cshifts[i].percent) {
@@ -314,11 +316,11 @@ void V_UpdatePalette()
 			}
 	}
 	// drop the damage value
-	cl.cshifts[CSHIFT_DAMAGE].percent -= host_frametime * 150;
+	cl.cshifts[CSHIFT_DAMAGE].percent -= frametime * 150;
 	if (cl.cshifts[CSHIFT_DAMAGE].percent <= 0)
 		cl.cshifts[CSHIFT_DAMAGE].percent = 0;
 	// drop the bonus value
-	cl.cshifts[CSHIFT_BONUS].percent -= host_frametime * 100;
+	cl.cshifts[CSHIFT_BONUS].percent -= frametime * 100;
 	if (cl.cshifts[CSHIFT_BONUS].percent <= 0)
 		cl.cshifts[CSHIFT_BONUS].percent = 0;
 	qboolean force = V_CheckGamma();
@@ -566,10 +568,11 @@ void V_RenderView() // The player's clipping box goes from (-16 -16 -24) to (16
 	}
 	R_PushDlights();
 	R_RenderView();
-	if (crosshair.value)
-		Draw_CharacterScaled(scr_vrect.x + scr_vrect.width / 2 -
-			(uiscale << 2) + cl_crossx.value, scr_vrect.y +
-			scr_vrect.height / 2 + cl_crossy.value, '+', uiscale);
+	if (!crosshair.value)
+		return;
+	Draw_CharacterScaled(scr_vrect.x + scr_vrect.width / 2 - uiscale*4
+		+ cl_crossx.value, scr_vrect.y + scr_vrect.height / 2
+		+ cl_crossy.value, cl_crosschar.value, uiscale);
 }
 
 void V_Init()
@@ -589,6 +592,7 @@ void V_Init()
 	Cvar_RegisterVariable(&crosshair);
 	Cvar_RegisterVariable(&cl_crossx);
 	Cvar_RegisterVariable(&cl_crossy);
+	Cvar_RegisterVariable(&cl_crosschar);
 	Cvar_RegisterVariable(&gl_cshiftpercent);
 	Cvar_RegisterVariable(&scr_ofsx);
 	Cvar_RegisterVariable(&scr_ofsy);

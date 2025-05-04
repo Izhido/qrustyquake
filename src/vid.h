@@ -93,7 +93,7 @@ void VID_Init(unsigned char *palette); // Called at startup to set up
 	// will go away after the call, so it must be copied off if the
 	// video driver will need it again
 void VID_Shutdown();
-void VID_CalcScreenDimensions();
+void VID_CalcScreenDimensions(cvar_t *cvar);
 void VID_Update(); // flushes the view buffer to the screen
 void VID_SetMode(int modenum, int customw, int customh, int customwinmode,
 		unsigned char *palette);

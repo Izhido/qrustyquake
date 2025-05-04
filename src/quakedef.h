@@ -6,8 +6,15 @@
 #define __QUAKEDEF__
 // CyanBun96: imagine if we could keep all the includes in one place instead
 // of all over the .c and .h files that'd be cool right
+#ifndef __WIN32__
 #include <SDL2/SDL.h>
+#endif
 #ifdef __WIN32__
+#ifndef _WINCROSS
+#include <SDL.h>
+#else
+#include <SDL2/SDL.h>
+#endif
 #include <windows.h>
 #include <time.h>
 #include <direct.h>
@@ -59,11 +66,7 @@
 #define MAX_EDICTS 32000 // FIXME: ouch! ouch! ouch!
 #define MIN_EDICTS 256 // johnfitz -- lowest allowed value for max_edicts cvar
 #define MAX_LIGHTSTYLES 64
-#ifndef _WIN32
 #define MAX_MODELS 32768 // these are sent over the net as bytes
-#else
-#define MAX_MODELS 16384 // these are sent over the net as bytes
-#endif
 #define MAX_SOUNDS 2048 // so they cannot be blindly increased
 #define SAVEGAME_COMMENT_LENGTH 39
 #define MAX_STYLESTRING 64

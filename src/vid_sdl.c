@@ -57,7 +57,7 @@ cvar_t aspectr = { "aspectr", "0", 1, 0, 0, 0 }; // 0 - auto
 cvar_t realwidth = { "realwidth", "0", 0, 0, 0, 0 }; // 0 - auto
 cvar_t realheight = { "realheight", "0", 0, 0, 0, 0 }; // 0 - auto
 
-void VID_CalcScreenDimensions();
+void VID_CalcScreenDimensions(cvar_t *cvar);
 void VID_AllocBuffers();
 
 int VID_GetDefaultMode()
@@ -251,7 +251,7 @@ void VID_Init(unsigned char *palette)
 	else
 		Con_Printf("Detected video mode %d\n", vid_modenum);
 	realwidth.value = 0;
-	VID_CalcScreenDimensions();
+	VID_CalcScreenDimensions(0);
 }
 
 void VID_Shutdown()
@@ -266,7 +266,7 @@ void VID_Shutdown()
 	}
 }
 
-void VID_CalcScreenDimensions()
+void VID_CalcScreenDimensions(cvar_t *cvar)
 {
 	uiscale = (vid.width / 320);
 	if (uiscale * 200 > vid.height)
@@ -370,6 +370,11 @@ void VID_AllocBuffers()
 	int chunk = vid.width * vid.height * sizeof(*d_pzbuffer);
 	int cachesize = D_SurfaceCacheForRes(vid.width, vid.height);
 	chunk += cachesize;
+	if (litwater_base) {
+		D_FlushCaches();
+		Hunk_FreeToHighMark(lwmark);
+		litwater_base = NULL;
+	}
 	if (d_pzbuffer) {
 		D_FlushCaches();
 		Hunk_FreeToHighMark(VID_highhunkmark);
@@ -450,6 +455,6 @@ void VID_SetMode(int modenum, int customw, int customh, int customwinmode,
 		}
 	}
 	realwidth.value = 0;
-	VID_CalcScreenDimensions();
+	VID_CalcScreenDimensions(0);
 	Cvar_SetValue("vid_mode", (float)vid_modenum);
 }

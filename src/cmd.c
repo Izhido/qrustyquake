@@ -36,7 +36,7 @@ void Cbuf_Init() // Command Buffer
 	SZ_Alloc(&cmd_text, 1<<18); // space for commands and script files
 }
 
-void Cbuf_AddText(char *text)
+void Cbuf_AddText(const char *text)
 { // Adds command text at the end of the buffer
 	int l = Q_strlen(text);
 	if (cmd_text.cursize + l >= cmd_text.maxsize) {
@@ -65,41 +65,66 @@ void Cbuf_InsertText(char *text)
 	}
 }
 
-void Cbuf_Execute()
-{
-	char line[1024];
-	while (cmd_text.cursize) {
-		// find a \n or ; line break
-		char *text = (char *)cmd_text.data;
-		int quotes = 0;
-		int i;
-		for (i = 0; i < cmd_text.cursize; i++) {
-			if (text[i] == '"')
-				quotes++;
-			if (!(quotes & 1) && text[i] == ';')
-				break;	// don't break if inside a quoted string
-			if (text[i] == '\n')
-				break;
-		}
-		memcpy(line, text, i);
-		line[i] = 0;
+
+void Cbuf_Waited()
+{ // Spike: for renderer/server isolation
+    cmd_wait = false;
+}
+
+
+void Cbuf_Execute ()
+{ // Spike: reworked 'wait' for renderer/server rate independance
+    int     i;
+    char    *text;
+    char    line[1024];
+    int     quotes, comment;
+
+    while (cmd_text.cursize && !cmd_wait)
+    {
+// find a \n or ; line break
+        text = (char *)cmd_text.data;
+
+        quotes = 0;
+        comment = 0;
+        for (i=0 ; i< cmd_text.cursize ; i++)
+        {
+            if (text[i] == '"')
+                quotes++;
+            if (text[i] == '/' && text[i + 1] == '/')
+                comment = true;
+            if (!(quotes&1) && !comment && text[i] == ';')
+                break;  // don't break if inside a quoted string
+            if (text[i] == '\n')
+                break;
+        }
+
+        if (i > (int)sizeof(line) - 1)
+        {
+            memcpy (line, text, sizeof(line) - 1);
+            line[sizeof(line) - 1] = 0;
+        }
+        else
+        {
+            memcpy (line, text, i);
+            line[i] = 0;
+        }
+
 // delete the text from the command buffer and move remaining commands down
 // this is necessary because commands (exec, alias) can insert data at the
 // beginning of the text buffer
-		if (i == cmd_text.cursize)
-			cmd_text.cursize = 0;
-		else {
-			i++;
-			cmd_text.cursize -= i;
-			Q_memmove(text, text + i, cmd_text.cursize);
-		}
-		// execute the command line
-		Cmd_ExecuteString(line, src_command);
-		if (cmd_wait) {	// skip out while text still remains in buffer
-			cmd_wait = false; // leaving it for next frame
-			break;
-		}
-	}
+
+        if (i == cmd_text.cursize)
+            cmd_text.cursize = 0;
+        else
+        {
+            i++;
+            cmd_text.cursize -= i;
+            memmove (text, text + i, cmd_text.cursize);
+        }
+
+// execute the command line
+        Cmd_ExecuteString (line, src_command);
+    }
 }
 
 
@@ -303,7 +328,7 @@ char *Cmd_Args()
 	return cmd_args;
 }
 
-void Cmd_TokenizeString(char *text)
+void Cmd_TokenizeString(const char *text)
 { // Parses the given string into command line tokens.
 	for (int i = 0; i < cmd_argc; i++)
 		Z_Free(cmd_argv[i]); // clear the args from the last string
@@ -319,7 +344,7 @@ void Cmd_TokenizeString(char *text)
 		if (!*text)
 			return;
 		if (cmd_argc == 1)
-			cmd_args = text;
+			cmd_args = (char *)text;
 		text = COM_Parse(text);
 		if (!text)
 			return;
@@ -369,7 +394,7 @@ void Cmd_AddCommand(char *cmd_name, xcommand_t function)
 	} // johnfitz
 }
 
-qboolean Cmd_Exists(char *cmd_name)
+qboolean Cmd_Exists(const char *cmd_name)
 {
 	for (cmd_function_t *cmd = cmd_functions; cmd; cmd = cmd->next)
 		if (!Q_strcmp(cmd_name, cmd->name))
@@ -388,7 +413,7 @@ char *Cmd_CompleteCommand(char *partial)
 	return NULL;
 }
 
-void Cmd_ExecuteString(char *text, cmd_source_t src)
+void Cmd_ExecuteString(const char *text, cmd_source_t src)
 { // A complete command line has been parsed, so try to execute it
   // FIXME: lookupnoadd the token to speed search?
 	cmd_source = src;

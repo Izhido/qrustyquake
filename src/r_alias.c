@@ -412,8 +412,8 @@ void R_AliasSetupFrame()
 
 void R_AliasDrawModel(alight_t *plighting)
 {
-	finalvert_t finalverts[MAXALIASVERTS]
-		__attribute__((aligned(CACHE_SIZE)));
+	finalvert_t finalverts[MAXALIASVERTS]/*
+		__attribute__((aligned(CACHE_SIZE)))*/;
 	auxvert_t auxverts[MAXALIASVERTS];
 	r_amodels_drawn++;
 	// cache align

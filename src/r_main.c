@@ -117,13 +117,13 @@ extern void Fog_FogCommand_f();
 extern void Fog_ParseWorldspawn();
 extern void R_InitSkyBox(); // Manoel Kasimier - skyboxes 
 extern void Sky_NewMap();
-extern void build_color_mix_lut();
+extern void build_color_mix_lut(cvar_t *cvar);
 
 void CreatePassages();
 void SetVisibilityByPassages();
 void R_MarkLeaves();
 void Sky_Init();
-void Fog_SetPalIndex();
+void Fog_SetPalIndex(cvar_t *cvar);
 
 void R_InitTextures()
 { // create a simple checkerboard texture for the default
@@ -603,15 +603,16 @@ void R_DrawBEntitiesOnList()
 	cur_ent_alpha = 1;
 }
 
+edge_t ledges[NUMSTACKEDGES + ((CACHE_SIZE - 1) / sizeof(edge_t)) + 1]/*
+	__attribute__((aligned(CACHE_SIZE)))*/;
+surf_t lsurfs[NUMSTACKSURFACES + ((CACHE_SIZE - 1) / sizeof(surf_t)) +
+1] /*__attribute__((aligned(CACHE_SIZE)))*/;
+
 void R_EdgeDrawing()
 {
 	// CyanBun96: windows would crash all over the place with the original
 	// alignment code, this might be compiler-dependent but it works
 	// Align the arrays themselves
-	edge_t ledges[NUMSTACKEDGES + ((CACHE_SIZE - 1) / sizeof(edge_t)) + 1]
-	    __attribute__((aligned(CACHE_SIZE)));
-	surf_t lsurfs[NUMSTACKSURFACES + ((CACHE_SIZE - 1) / sizeof(surf_t)) +
-		      1] __attribute__((aligned(CACHE_SIZE)));
 	// Accessing them directly without pointer adjustment
 	r_edges = auxedges ? auxedges : &ledges[0]; // already aligned
 	if (r_surfsonstack) {

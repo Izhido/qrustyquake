@@ -1,5 +1,5 @@
 #include "sys_sdl.c"
-int Sys_FileOpenWrite (char *path) // CyanBun96: pasta from Quakespasm
+int Sys_FileOpenWrite (const char *path) // CyanBun96: pasta from Quakespasm
 {
 	int i = findhandle ();
 	FILE *f = fopen(path, "wb");
@@ -8,12 +8,12 @@ int Sys_FileOpenWrite (char *path) // CyanBun96: pasta from Quakespasm
 	return i;
 }
 
-int Sys_FileWrite (int handle, void *data, int count) // ditto
+int Sys_FileWrite (int handle, const void *data, int count) // ditto
 {
 	return fwrite (data, 1, count, sys_handles[handle]);
 }
 
-void Sys_mkdir(char *path)
+void Sys_mkdir(const char *path)
 {
 	_mkdir(path);
 }

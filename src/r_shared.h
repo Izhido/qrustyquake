@@ -19,11 +19,7 @@
 	// be farther away than anything in the scene
 #define NUMSTACKEDGES 16384 // CyanBun96: expanding limits
 #define MINEDGES NUMSTACKEDGES
-#ifndef _WIN32
 #define NUMSTACKSURFACES 16384 // CyanBun96: expanding limits
-#else
-#define NUMSTACKSURFACES 4096 // CyanBun96: weendeez fucking dies if you ask it to do something every other system can.
-#endif
 #define MINSURFACES NUMSTACKSURFACES
 #define MAXSPANS 16384 // CyanBun96: expanding limits
 #define ALIAS_LEFT_CLIP 0x0001 // flags in finalvert_t.flags

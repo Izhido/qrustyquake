@@ -8,8 +8,6 @@
 
 #include "quakedef.h"
 
-#include <SDL2/SDL.h>
-
 static int	buffersize;
 
 

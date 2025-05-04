@@ -45,7 +45,7 @@ cvar_t scr_hudstyle = {"hudstyle", "0", true, false, 0, NULL};
 
 void SCR_HUDStyle_f (cvar_t *cvar);
 
-void SCR_CenterPrint(char *str) // Called for important messages
+void SCR_CenterPrint(const char *str) // Called for important messages
 { // that should stay in the center of the screen for a few moments
 	strncpy(scr_centerstring, str, sizeof(scr_centerstring) - 1);
 	scr_centertime_off = scr_centertime.value;

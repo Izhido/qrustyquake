@@ -125,6 +125,7 @@ typedef struct
                                                                 // doesn't accidentally do something the
                                                                 // first frame
         usercmd_t       cmd;                    // last command sent to the server
+	usercmd_t   pendingcmd;     // accumulated state from mice+joysticks.
 
 // information for local display
         int                     stats[MAX_CL_STATS];    // health, etc

@@ -77,6 +77,8 @@ void Con_CheckResize()
 	char tbuf[CON_TEXTSIZE];
 
 	width = (vid.width >> 3) - 2;
+	if (uiscale)
+		width /= uiscale;
 
 	if (width == con_linewidth)
 		return;

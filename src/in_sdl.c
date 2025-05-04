@@ -115,7 +115,7 @@ void Sys_SendKeyEvents()
 				windowSurface = SDL_GetWindowSurface(window);
 				Cvar_SetValue("realwidth", windowSurface->w);
 				Cvar_SetValue("realheight", windowSurface->h);
-				VID_CalcScreenDimensions();
+				VID_CalcScreenDimensions(0);
 				break;
 			}
 			break;

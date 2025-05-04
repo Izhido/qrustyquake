@@ -248,13 +248,14 @@ void CL_KeepaliveMessage (void)
         SZ_Clear (&cls.message);
 }
 
+char    model_precache[MAX_MODELS][MAX_QPATH];
+char    sound_precache[MAX_SOUNDS][MAX_QPATH];
+
 void CL_ParseServerInfo()
 {
         const char      *str;
         int             i;
         int             nummodels, numsounds;
-        char    model_precache[MAX_MODELS][MAX_QPATH];
-        char    sound_precache[MAX_SOUNDS][MAX_QPATH];
 
         Con_DPrintf ("Serverinfo packet received.\n");
 

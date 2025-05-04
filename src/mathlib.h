@@ -11,11 +11,7 @@
 #define VectorAdd(a,b,c) {c[0]=a[0]+b[0];c[1]=a[1]+b[1];c[2]=a[2]+b[2];}
 #define VectorCopy(a,b) {b[0]=a[0];b[1]=a[1];b[2]=a[2];}
 #define LERP(a, b, t) ((a) + ((b)-(a))*(t))
-#define IS_NAN(x) ({                    \
-        int temp;                       \
-        memcpy(&temp, &x, sizeof(int)); \
-        ((temp & nanmask) == nanmask);  \
-})
+#define IS_NAN(x) isnan(x)
 // johnfitz -- courtesy of lordhavoc
 #define VectorNormalizeFast(_v)                                           \
 {                                                                         \

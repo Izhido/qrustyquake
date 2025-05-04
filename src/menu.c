@@ -446,9 +446,9 @@ void M_Main_Draw()
 	qpic_t *p = Draw_CachePic("gfx/ttl_main.lmp");
 	M_DrawTransPic((320 - p->width) / 2, 4, p);
 	M_DrawTransPic(72, 32, Draw_CachePic("gfx/mainmenu.lmp"));
-	int f = (int)(host_time * 10) % 6;
+	int f = (int)(realtime * 10) % 6;
 	M_DrawTransPic(54, 32 + m_main_cursor * 20,
-		       Draw_CachePic(va("gfx/menudot%i.lmp", f + 1)));
+	       Draw_CachePic(va("gfx/menudot%i.lmp", f + 1)));
 }
 
 void M_Main_Key(int key)
@@ -507,7 +507,7 @@ void M_SinglePlayer_Draw()
 	qpic_t *p = Draw_CachePic("gfx/ttl_sgl.lmp");
 	M_DrawTransPic((320 - p->width) / 2, 4, p);
 	M_DrawTransPic(72, 32, Draw_CachePic("gfx/sp_menu.lmp"));
-	int f = (int)(host_time * 10) % 6;
+	int f = (int)(realtime * 10) % 6;
 	M_DrawTransPic(54, 32 + m_singleplayer_cursor * 20,
 		       Draw_CachePic(va("gfx/menudot%i.lmp", f + 1)));
 }
@@ -685,7 +685,7 @@ void M_MultiPlayer_Draw()
 	qpic_t *p = Draw_CachePic("gfx/p_multi.lmp");
 	M_DrawTransPic((320 - p->width) / 2, 4, p);
 	M_DrawTransPic(72, 32, Draw_CachePic("gfx/mp_menu.lmp"));
-	int f = (int)(host_time * 10) % 6;
+	int f = (int)(realtime * 10) % 6;
 	M_DrawTransPic(54, 32 + m_multiplayer_cursor * 20,
 		       Draw_CachePic(va("gfx/menudot%i.lmp", f + 1)));
 	if (serialAvailable || ipxAvailable || tcpipAvailable)
@@ -943,7 +943,7 @@ void M_Net_Draw()
 	M_Print(f, 150, net_helpMessage[m_net_cursor * 4 + 1]);
 	M_Print(f, 158, net_helpMessage[m_net_cursor * 4 + 2]);
 	M_Print(f, 166, net_helpMessage[m_net_cursor * 4 + 3]);
-	f = (int)(host_time * 10) % 6;
+	f = (int)(realtime * 10) % 6;
 	M_DrawTransPic(54, 32 + m_net_cursor * 20,
 		       Draw_CachePic(va("gfx/menudot%i.lmp", f + 1)));
 }
@@ -1403,8 +1403,8 @@ void M_New_Draw()
 	M_Print(xoffset + 204, 104, temp);
 	if (new_cursor == 9 && (int)host_maxfps.value > 72) {
 		M_DrawTextBox(52, 158, 30, 1);
-		M_Print(64, 166, "Values above    break physics");
-		M_PrintWhite(64, 166, "             72");
+		M_Print(64, 166, "Vanilla max is    expect bugs");
+		M_PrintWhite(64, 166, "               72");
 	}
 	M_Print(xoffset, 112, "           Window Mode");
 	if (newwinmode == 0)

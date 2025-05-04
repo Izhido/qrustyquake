@@ -35,6 +35,8 @@ dlight_t cl_dlights[MAX_DLIGHTS];
 int cl_numvisedicts;
 entity_t *cl_visedicts[MAX_VISEDICTS];
 
+extern void CL_AdjustAngles();
+
 void CL_ClearState()
 {
 	if (!sv.active)
@@ -381,30 +383,43 @@ int CL_ReadFromServer()
 	return 0;
 }
 
-void CL_SendCmd()
+void CL_AccumulateCmd () // Spike: split from CL_SendCmd, to do clientside
+{ // viewangle changes separately from outgoing packets.
+    if (cls.signon == SIGNONS) {
+        CL_AdjustAngles (); //basic keyboard looking
+        IN_Move (&cl.pendingcmd); // accumulate movement from other devices
+    }
+}
+
+void CL_SendCmd ()
 {
+	usercmd_t cmd;
 	if (cls.state != ca_connected)
 		return;
-	usercmd_t cmd;
 	if (cls.signon == SIGNONS) {
-		CL_BaseMove(&cmd); // get basic movement from keyboard
+		CL_BaseMove (&cmd); // get basic movement from keyboard
 		// allow mice or other external controllers to add to the move
-		IN_Move(&cmd);
-		CL_SendMove(&cmd); // send the unreliable message
+		cmd.forwardmove += cl.pendingcmd.forwardmove;
+		cmd.sidemove    += cl.pendingcmd.sidemove;
+		cmd.upmove      += cl.pendingcmd.upmove;
+		CL_SendMove (&cmd); // send the unreliable message
 	}
+	else
+		CL_SendMove (NULL);
+	memset(&cl.pendingcmd, 0, sizeof(cl.pendingcmd));
 	if (cls.demoplayback) {
-		SZ_Clear(&cls.message);
+		SZ_Clear (&cls.message);
 		return;
 	}
 	if (!cls.message.cursize) // send the reliable message
 		return; // no message at all
-	if (!NET_CanSendMessage(cls.netcon)) {
-		Con_DPrintf("CL_WriteToServer: can't send\n");
+	if (!NET_CanSendMessage (cls.netcon)) {
+		Con_DPrintf ("CL_SendCmd: can't send\n");
 		return;
 	}
-	if (NET_SendMessage(cls.netcon, &cls.message) == -1)
-		Host_Error("CL_WriteToServer: lost server connection");
-	SZ_Clear(&cls.message);
+	if (NET_SendMessage (cls.netcon, &cls.message) == -1)
+		Host_Error ("CL_SendCmd: lost server connection");
+	SZ_Clear (&cls.message);
 }
 
 void CL_Init()

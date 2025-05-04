@@ -110,8 +110,8 @@ void D_PolysetDraw()
 		else dither_pat = 0;
 	}
 	spanpackage_t spans[DPS_MAXSPANS + 1 +
-		((CACHE_SIZE - 1) / sizeof(spanpackage_t)) + 1]
-		__attribute__((aligned(CACHE_SIZE)));
+		((CACHE_SIZE - 1) / sizeof(spanpackage_t)) + 1]/*
+		__attribute__((aligned(CACHE_SIZE)))*/;
 	a_spans = (spanpackage_t *)
 		(((uintptr_t) & spans[0] + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
 	if (r_affinetridesc.drawtype)
@@ -129,6 +129,11 @@ void D_PolysetDrawFinalVerts(finalvert_t *fv, int numverts)
 				(fv->v[1] < r_refdef.vrectbottom)) {
 			int z = fv->v[5] >> 16;
 			short *zbuf = zspantable[fv->v[1]] + fv->v[0];
+			if (zbuf < d_pzbuffer || // FIXME properly
+				zbuf >= (d_pzbuffer+vid.width*vid.height*2)) {
+				printf("ZBUF SEGFAULT 0 %lx\n", zbuf);
+				continue;
+			}
 			if (!(z >= *zbuf))
 				continue;
 			int pix;
@@ -288,6 +293,11 @@ split: // split this edge
 		goto nodraw;
 	int z = new[5] >> 16;
 	short *zbuf = zspantable[new[1]] + new[0];
+	if (zbuf < d_pzbuffer || // FIXME properly
+		zbuf >= (d_pzbuffer+vid.width*vid.height*2)) {
+		printf("ZBUF SEGFAULT 1 %lx\n", zbuf);
+		goto nodraw;
+	}
 	if (z >= *zbuf) {
 		*zbuf = z;
 		int pix = d_pcolormap[skintable[new[3] >> 16][new[2] >> 16]];

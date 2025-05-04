@@ -108,11 +108,14 @@ void D_DrawSurfaces()
 		if (!s->spans)
 			continue;
 		r_drawnpolycount++;
+		msurface_t *pface = s->data;
 		// CyanBun96: some entities are assigned an invalid address like
 		// 35, which leads to segfaults on any further checks while
 		// still passing s->entity != NULL check. Must be a symptom of
 		// some bigger issue that I can't be bothered to diagnose ATM.
 		unsigned long is_ent = (unsigned long)s->entity & 0xffff000;
+		// CyanBun96: a 0 in either of those causes an error. FIXME
+		if (!pface || !pface->extents[0] || !pface->extents[1])continue;
 		if (is_ent && s->entity->alpha && r_entalpha.value == 1)
 			winquake_surface_liquid_alpha = (float)s->entity->alpha / 255;
 		// Baker: Need to determine what kind of liquid we are
@@ -132,6 +135,7 @@ void D_DrawSurfaces()
 		d_zistepu = s->d_zistepu;
 		d_zistepv = s->d_zistepv;
 		d_ziorigin = s->d_ziorigin;
+		lmonly = 0;
 		if (s->flags & SURF_DRAWSKY) {
 			if (!r_skymade)
 				R_MakeSky();
@@ -140,7 +144,6 @@ void D_DrawSurfaces()
 		} else if (s->flags & SURF_DRAWSKYBOX) {
 			// Manoel Kasimier - hi-res skyboxes - edited
 			extern byte r_skypixels[6][SKYBOX_MAX_SIZE*SKYBOX_MAX_SIZE];
-			msurface_t *pface = s->data;
 			miplevel = 0;
 			cacheblock = (byte *)(r_skypixels[pface->texinfo->texture->offsets[0]]);
 			// Manoel Kasimier - hi-res skyboxes - edited
@@ -168,8 +171,7 @@ void D_DrawSurfaces()
 				D_DrawSolidSurface(s, (int)r_clearcolor.value & 0xFF);
 			else D_DrawSolidSurface(s, 0xFF);
 			D_DrawZSpans(s->spans);
-		} else if (s->flags & SURF_DRAWTURB) {
-			msurface_t *pface = s->data;
+		} else if (s->flags & SURF_DRAWTURB && !s->entity->model->haslitwater) {
 			miplevel = 0;
 			cacheblock = (pixel_t *)
 				((byte *) pface->texinfo->texture +
@@ -230,7 +232,6 @@ void D_DrawSurfaces()
 						transformed_modelorg);
 				R_RotateBmodel(); // FIXME: don't mess with the frustum, make entity passed in
 			}
-			msurface_t *pface = s->data;
 			miplevel = pface->flags & SURF_DRAWCUTOUT ? 0 :
 				D_MipLevelForScale(s->nearzi *
 					scale_for_mip *
@@ -256,6 +257,61 @@ void D_DrawSurfaces()
 				VectorCopy(base_modelorg, modelorg);
 				R_TransformFrustum();
 			}
+		} else if (s->flags & SURF_DRAWTURB && s->entity->model->haslitwater) {
+			if (s->insubmodel) {
+				// FIXME: we don't want to do all this for every polygon!
+				// TODO: store once at start of frame
+				currententity = s->entity; //FIXME: make this passed in to
+				vec3_t local_modelorg;
+				VectorSubtract(r_origin, currententity
+					->origin, local_modelorg);
+				TransformVector(local_modelorg,
+						transformed_modelorg);
+				R_RotateBmodel(); // FIXME: don't mess with the frustum, make entity passed in
+			}
+			miplevel = pface->flags & SURF_DRAWCUTOUT ? 0 :
+				D_MipLevelForScale(s->nearzi *
+					scale_for_mip *
+					pface->texinfo->mipadjust);
+			// FIXME: make this passed in to D_CacheSurface
+			lmonly = 1; // this is how we know it's lit water that we're drawing
+			surfcache_t *pcurrentcache =
+				D_CacheSurface(pface, miplevel);
+			cacheblock = (pixel_t *) pcurrentcache->data;
+			cachewidth = pcurrentcache->width;
+			D_CalcGradients(pface);
+			D_DrawSpans8(s->spans); // draw the lightmap to a separate buffer
+			miplevel = 0;
+			cacheblock = (pixel_t *)
+				((byte *) pface->texinfo->texture +
+				pface->texinfo->texture->offsets[0]);
+			cachewidth = 64;
+			D_CalcGradients(pface);
+			float opacity = 1 - (float)s->entity->alpha / 255;
+			if (s->flags & SURF_DRAWLAVA)
+				opacity = 1 - r_lavaalpha.value;
+			else if (s->flags & SURF_DRAWSLIME)
+				opacity = 1 - r_slimealpha.value;
+			else if (s->flags & SURF_DRAWWATER)
+				opacity = 1 - r_wateralpha.value;
+			else if (s->flags & SURF_DRAWTELE)
+				opacity = 1 - r_telealpha.value;
+			Turbulent8(s->spans, opacity);
+			if (!r_wateralphapass) // Manoel Kasimier - translucent water
+				D_DrawZSpans(s->spans);
+			if (s->insubmodel) {
+				// restore the old drawing state
+				// FIXME: we don't want to do this every time!
+				// TODO: speed up
+				currententity = &cl_entities[0];
+				VectorCopy(world_transformed_modelorg,
+					   transformed_modelorg);
+				VectorCopy(base_vpn, vpn);
+				VectorCopy(base_vup, vup);
+				VectorCopy(base_vright, vright);
+				VectorCopy(base_modelorg, modelorg);
+				R_TransformFrustum();
+			}
 		} else {
 			if (s->insubmodel) {
 				// FIXME: we don't want to do all this for every polygon!
@@ -268,7 +324,6 @@ void D_DrawSurfaces()
 						transformed_modelorg);
 				R_RotateBmodel(); // FIXME: don't mess with the frustum, make entity passed in
 			}
-			msurface_t *pface = s->data;
 			miplevel = pface->flags & SURF_DRAWCUTOUT ? 0 :
 				D_MipLevelForScale(s->nearzi *
 					scale_for_mip *

@@ -14,7 +14,7 @@
 #define BACKFACE_EPSILON 0.01
 #define DIST_NOT_SET 98765
 #define NEAR_CLIP 0.01
-#define ALIAS_Z_CLIP_PLANE 5
+#define ALIAS_Z_CLIP_PLANE 0.1 // CyanBun96: was 5, lowered for high FOV guns
 #define MAX_BTOFPOLYS 5000 // FIXME: tune this
 #define AMP 8*0x10000 // turbulence stuff
 #define AMP2 3
@@ -144,9 +144,10 @@ extern cvar_t r_wateralpha, r_slimealpha, r_lavaalpha, r_telealpha;
 extern int r_pass;
 extern cvar_t r_twopass;
 extern cvar_t r_entalpha;
-extern unsigned char *lit_lut;
+extern unsigned char lit_lut[LIT_LUT_RES*LIT_LUT_RES*LIT_LUT_RES];
 extern int lit_lut_initialized;
 extern int color_lightmap;
+extern int lmonly;
 
 void R_DrawSprite();
 void R_RenderFace(msurface_t *fa, int clipflags);

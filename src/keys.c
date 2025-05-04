@@ -85,7 +85,7 @@ void Key_Console(int key) // Interactive line editing and console scrollback
 		return;
 	}
 	if (key == K_TAB) { // command completion
-		char *cmd = Cmd_CompleteCommand(key_lines[edit_line] + 1);
+		const char *cmd = Cmd_CompleteCommand(key_lines[edit_line] + 1);
 		if (!cmd)
 			cmd = Cvar_CompleteVariable(key_lines[edit_line] + 1);
 		if (cmd) {

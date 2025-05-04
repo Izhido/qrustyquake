@@ -97,6 +97,8 @@ GENERIC_TYPES (IMPL_GENERIC_FUNCS, NO_COMMA)
 	 (x) > (_maxval) ? (_maxval) : (x))
 #endif
 
+#define countof(arr) (sizeof(arr) / sizeof(arr[0]))
+
 typedef struct sizebuf_s
 {
 	qboolean	allowoverflow;	// if false, do a Sys_Error

@@ -399,8 +399,9 @@ void Host_Loadgame_f()
 	int i = 0;
 	for (; i < MAX_LIGHTSTYLES; i++) { // load the light styles
 		fscanf(f, "%s\n", str);
-		sv.lightstyles[i] = Hunk_Alloc(strlen(str) + 1);
-		strcpy(sv.lightstyles[i], str);
+		char *dst = Hunk_Alloc(strlen(str) + 1);
+		strcpy(dst, str);
+		sv.lightstyles[i] = dst;
 	}
 	// load the edicts out of the savegame file
 	int entnum = -1; // -1 is the globals
@@ -418,7 +419,7 @@ void Host_Loadgame_f()
 		if (i == sizeof(str) - 1)
 			Sys_Error("Loadgame buffer overflow");
 		str[i] = 0;
-		char *start = str;
+		const char *start = str;
 		start = COM_Parse(str);
 		if (!com_token[0])
 			break; // end of file
@@ -841,8 +842,8 @@ void Host_Begin_f()
 
 void Host_Kick_f() // Kicks a user off of the server
 {
-	char *who;
-	char *message = NULL;
+	const char *who;
+	const char *message = NULL;
 	client_t *save;
 	int i;
 	qboolean byNumber = false;

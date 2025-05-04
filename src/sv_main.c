@@ -826,6 +826,7 @@ stats:
 	dev_stats.packetsize = msg->cursize;
 	dev_peakstats.packetsize = q_max(msg->cursize, dev_peakstats.packetsize);*/
 	//johnfitz
+	;
 }
 
 /*

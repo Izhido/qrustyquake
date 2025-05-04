@@ -2330,8 +2330,8 @@ static void COM_Game_f (void)
 		//FIXMESky_ClearAll();
 		if (!isDedicated)
 		{
-			//FIXMETexMgr_NewGame ();
-			//FIXMEDraw_NewGame ();
+			W_LoadWadFile ();
+			Draw_Init ();
 			//FIXMER_NewGame ();
 		}
 		//FIXMEExtraMaps_NewGame ();

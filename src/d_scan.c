@@ -13,6 +13,8 @@ int r_turb_spancount;
 short *pz; // Manoel Kasimier - translucent water
 int izi, izistep;
 int dither_pat = 0;
+unsigned char *litwater_base;
+int lwmark = 0;
 
 extern cvar_t r_skyfog;
 extern cvar_t r_alphastyle;
@@ -67,27 +69,80 @@ void D_WarpScreen() // this performs a slight compression of the screen at the
 
 void D_DrawTurbulent8Span()
 {
-	do {
-		int s = ((r_turb_s +
-		      r_turb_turb[(r_turb_t >> 16) & (CYCLE - 1)]) >> 16) & 63;
-		int t = ((r_turb_t +
-		      r_turb_turb[(r_turb_s >> 16) & (CYCLE - 1)]) >> 16) & 63;
-		*r_turb_pdest++ = *(r_turb_pbase + (t << 6) + s);
-		r_turb_s += r_turb_sstep;
-		r_turb_t += r_turb_tstep;
-	} while (--r_turb_spancount > 0);
+	if (!lmonly) {
+		do {
+			int s = ((r_turb_s + r_turb_turb[(r_turb_t >> 16) & (CYCLE - 1)]) >> 16) & 63;
+			int t = ((r_turb_t + r_turb_turb[(r_turb_s >> 16) & (CYCLE - 1)]) >> 16) & 63;
+			int pix = *(r_turb_pbase + (t << 6) + s);
+			*r_turb_pdest++ = pix;
+			r_turb_s += r_turb_sstep;
+			r_turb_t += r_turb_tstep;
+		} while (--r_turb_spancount > 0);
+	} else { // lit water: render first and then apply the already drawn lightmap as a filter
+		if (!lit_lut_initialized) R_BuildLitLUT();
+		do {
+			int s = ((r_turb_s + r_turb_turb[(r_turb_t >> 16) & (CYCLE - 1)]) >> 16) & 63;
+			int t = ((r_turb_t + r_turb_turb[(r_turb_s >> 16) & (CYCLE - 1)]) >> 16) & 63;
+			int pix = *(r_turb_pbase + (t << 6) + s);
+			int lit = *(litwater_base+(r_turb_pdest-d_viewbuffer));
+			unsigned char rp = host_basepal[pix * 3 + 0];
+			unsigned char gp = host_basepal[pix * 3 + 1];
+			unsigned char bp = host_basepal[pix * 3 + 2];
+			unsigned char rl = host_basepal[lit * 3 + 0];
+			unsigned char gl = host_basepal[lit * 3 + 1];
+			unsigned char bl = host_basepal[lit * 3 + 2];
+			int r = rp * rl / 255;
+			int g = gp * gl / 255;
+			int b = bp * bl / 255;
+			*r_turb_pdest++ = lit_lut[ QUANT(r)
+                                        + QUANT(g)*LIT_LUT_RES
+                                        + QUANT(b)*LIT_LUT_RES*LIT_LUT_RES ];
+			r_turb_s += r_turb_sstep;
+			r_turb_t += r_turb_tstep;
+		} while (--r_turb_spancount > 0);
+	}
 }
 
 void D_DrawTurbulent8SpanAlpha (float opacity)
 {
-	if (r_alphastyle.value == 0) {
-		if (!fog_lut_built)
-			build_color_mix_lut();
+	if (r_alphastyle.value == 0 && !lmonly) {
+		if (!fog_lut_built) build_color_mix_lut();
 		do {
 			if (*pz <= (izi >> 16)) {
 				int s=((r_turb_s+r_turb_turb[(r_turb_t>>16)&(CYCLE-1)])>>16)&63;
 				int t=((r_turb_t+r_turb_turb[(r_turb_s>>16)&(CYCLE-1)])>>16)&63;
 				*r_turb_pdest = color_mix_lut[*(r_turb_pbase + (t << 6) + s)]
+					[*r_turb_pdest][(int)(opacity*FOG_LUT_LEVELS)];
+			}
+			r_turb_pdest++;
+			izi += izistep;
+			pz++;
+			r_turb_s += r_turb_sstep;
+			r_turb_t += r_turb_tstep;
+		} while (--r_turb_spancount > 0);
+		return;
+	} else if (r_alphastyle.value == 0 && lmonly) {
+		if (!fog_lut_built) build_color_mix_lut();
+		if (!lit_lut_initialized) R_BuildLitLUT();
+		do {
+			if (*pz <= (izi >> 16)) {
+				int s=((r_turb_s+r_turb_turb[(r_turb_t>>16)&(CYCLE-1)])>>16)&63;
+				int t=((r_turb_t+r_turb_turb[(r_turb_s>>16)&(CYCLE-1)])>>16)&63;
+				int pix = *(r_turb_pbase + (t << 6) + s);
+				int lit = *(litwater_base+(r_turb_pdest-d_viewbuffer));
+				unsigned char rp = host_basepal[pix * 3 + 0];
+				unsigned char gp = host_basepal[pix * 3 + 1];
+				unsigned char bp = host_basepal[pix * 3 + 2];
+				unsigned char rl = host_basepal[lit * 3 + 0];
+				unsigned char gl = host_basepal[lit * 3 + 1];
+				unsigned char bl = host_basepal[lit * 3 + 2];
+				int r = rp * rl / 255;
+				int g = gp * gl / 255;
+				int b = bp * bl / 255;
+				pix = lit_lut[ QUANT(r)
+						+ QUANT(g)*LIT_LUT_RES
+						+ QUANT(b)*LIT_LUT_RES*LIT_LUT_RES ];
+				*r_turb_pdest = color_mix_lut[pix]
 					[*r_turb_pdest][(int)(opacity*FOG_LUT_LEVELS)];
 			}
 			r_turb_pdest++;
@@ -105,19 +160,49 @@ void D_DrawTurbulent8SpanAlpha (float opacity)
 	else if (opacity >= 0.33f) dither_pat = 4;
 	else if (opacity >= 0.25f) dither_pat = 5;
 	else dither_pat = 6;
-	do {
-		if (*pz <= (izi >> 16)) {
-			int s=((r_turb_s+r_turb_turb[(r_turb_t>>16)&(CYCLE-1)])>>16)&63;
-			int t=((r_turb_t+r_turb_turb[(r_turb_s>>16)&(CYCLE-1)])>>16)&63;
-			if (D_Dither(r_turb_pdest))
-				*r_turb_pdest = *(r_turb_pbase + (t << 6) + s);
-		}
-		r_turb_pdest++;
-		izi += izistep;
-		pz++;
-		r_turb_s += r_turb_sstep;
-		r_turb_t += r_turb_tstep;
-	} while (--r_turb_spancount > 0);
+	if (!lmonly) {
+		do {
+			if (*pz <= (izi >> 16)) {
+				int s=((r_turb_s+r_turb_turb[(r_turb_t>>16)&(CYCLE-1)])>>16)&63;
+				int t=((r_turb_t+r_turb_turb[(r_turb_s>>16)&(CYCLE-1)])>>16)&63;
+				if (D_Dither(r_turb_pdest))
+					*r_turb_pdest = *(r_turb_pbase + (t << 6) + s);
+			}
+			r_turb_pdest++;
+			izi += izistep;
+			pz++;
+			r_turb_s += r_turb_sstep;
+			r_turb_t += r_turb_tstep;
+		} while (--r_turb_spancount > 0);
+	} else {
+		do {
+			if (*pz <= (izi >> 16)) {
+				int s=((r_turb_s+r_turb_turb[(r_turb_t>>16)&(CYCLE-1)])>>16)&63;
+				int t=((r_turb_t+r_turb_turb[(r_turb_s>>16)&(CYCLE-1)])>>16)&63;
+				if (D_Dither(r_turb_pdest)) {
+					int pix = *(r_turb_pbase + (t << 6) + s);
+					int lit = *(litwater_base+(r_turb_pdest-d_viewbuffer));
+					unsigned char rp = host_basepal[pix * 3 + 0];
+					unsigned char gp = host_basepal[pix * 3 + 1];
+					unsigned char bp = host_basepal[pix * 3 + 2];
+					unsigned char rl = host_basepal[lit * 3 + 0];
+					unsigned char gl = host_basepal[lit * 3 + 1];
+					unsigned char bl = host_basepal[lit * 3 + 2];
+					int r = rp * rl / 255;
+					int g = gp * gl / 255;
+					int b = bp * bl / 255;
+					*r_turb_pdest = lit_lut[ QUANT(r)
+							+ QUANT(g)*LIT_LUT_RES
+							+ QUANT(b)*LIT_LUT_RES*LIT_LUT_RES ];
+				}
+			}
+			r_turb_pdest++;
+			izi += izistep;
+			pz++;
+			r_turb_s += r_turb_sstep;
+			r_turb_t += r_turb_tstep;
+		} while (--r_turb_spancount > 0);
+	}
 }
 
 void Turbulent8(espan_t *pspan, float opacity)
@@ -328,6 +413,14 @@ void D_DrawSpans8(espan_t *pspan)
 	do {
 		unsigned char *pdest = (unsigned char *)((byte *) d_viewbuffer +
 				      (screenwidth * pspan->v) + pspan->u);
+		if (lmonly) {
+			if (!litwater_base) {
+				lwmark = Hunk_HighMark();
+				litwater_base = Hunk_HighAllocName(vid.width*vid.height, "waterlightmap");
+			}
+			pdest = (unsigned char *)((byte *) litwater_base +
+				      (screenwidth * pspan->v) + pspan->u);
+		}
 		int count = pspan->count;
 		float du = (float)pspan->u; // calculate the initial s/z, t/z,
 		float dv = (float)pspan->v; // 1/z, s, and t and clamp

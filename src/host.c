@@ -16,6 +16,8 @@ quakeparms_t host_parms;
 qboolean host_initialized; // true if into command execution
 qboolean isDedicated;
 double host_frametime;
+double host_rawframetime;
+float host_netinterval;
 double host_time;
 double realtime; // without any filtering or bounding
 double oldrealtime; // last frame run
@@ -43,9 +45,28 @@ cvar_t coop = { "coop", "0", false, false, 0, NULL };
 cvar_t pausable = { "pausable", "1", false, false, 0, NULL };
 cvar_t temp1 = { "temp1", "0", false, false, 0, NULL };
 cvar_t host_maxfps = {"host_maxfps", "72", true, false, 0, NULL}; //johnfitz
-cvar_t  max_edicts = {"max_edicts", "8192", false, false, 0, NULL}; //johnfitz //ericw -- changed from 2048 to 8192, removed CVAR_ ARCHIVE
+cvar_t host_timescale = {"host_timescale", "0", CVAR_NONE}; //johnfitz
+cvar_t max_edicts = {"max_edicts", "8192", false, false, 0, NULL}; //johnfitz //ericw -- changed from 2048 to 8192, removed CVAR_ ARCHIVE
 
 extern void IN_MLookDown();
+extern void Cbuf_Waited();
+extern void CL_AccumulateCmd();
+    
+static void Max_Fps_f (cvar_t *var)
+{
+	if (var->value > 72 || var->value <= 0) {
+		if (!host_netinterval)
+			Con_Printf ("Using renderer/network isolation.\n");
+		host_netinterval = 1.0/72;
+	}
+	else {
+		if (host_netinterval)
+			Con_Printf ("Disabling renderer/network isolation.\n");
+		host_netinterval = 0;
+		if (var->value > 72)
+			Con_Printf ("host_maxfps above 72 breaks physics.\n");
+	}
+}
 
 void Host_EndGame(char *message, ...)
 {
@@ -143,6 +164,9 @@ void Host_InitLocal()
 	Cvar_RegisterVariable(&pausable);
 	Cvar_RegisterVariable(&temp1);
 	Cvar_RegisterVariable(&host_maxfps); // johnfitz
+	Cvar_SetCallback (&host_maxfps, Max_Fps_f);
+	Max_Fps_f (&host_maxfps);
+	Cvar_RegisterVariable(&host_timescale); // johnfitz
 	Cvar_RegisterVariable(&max_edicts); //johnfitz
 	Host_FindMaxClients();
 	host_time = 1.0; // so a think at time 0 won't get called
@@ -317,22 +341,37 @@ void Host_ClearMemory()
 	memset(&cl, 0, sizeof(cl));
 }
 
-qboolean Host_FilterTime(float time)
-{ // Returns false if the time is too short to run a frame
-	realtime += time;
-	if (!cls.timedemo && realtime - oldrealtime < 1.0 / host_maxfps.value)
-		return false;	// framerate is too high
-	host_frametime = realtime - oldrealtime;
-	oldrealtime = realtime;
-	if (host_framerate.value > 0)
-		host_frametime = host_framerate.value;
-	else {			// don't allow really long or short frames
-		if (host_frametime > 0.1)
-			host_frametime = 0.1;
-		if (host_frametime < 0.001)
-			host_frametime = 0.001;
+double Host_GetFrameInterval ()
+{
+	if ((host_maxfps.value || cls.state==ca_disconnected) && !cls.timedemo){
+		float maxfps;
+		if (cls.state == ca_disconnected) {
+			maxfps = 60;//TODO vid.refreshrate ? vid.refreshrate : 60.f;
+			if (host_maxfps.value)
+				maxfps = q_min (maxfps, host_maxfps.value);
+			maxfps = CLAMP (10.f, maxfps, 10000000.f);
+		}
+		else {
+			maxfps = CLAMP (10.f, host_maxfps.value, 10000000.f);
+		}
+		return 1.0 / maxfps;
 	}
-	return true;
+	return 0.0;
+}
+
+static void Host_AdvanceTime (double dt)
+{
+	realtime += dt;
+	host_frametime = host_rawframetime = realtime - oldrealtime;
+	oldrealtime = realtime;
+	//johnfitz -- host_timescale is more intuitive than host_framerate
+	if (host_timescale.value > 0)
+		host_frametime *= host_timescale.value;
+	//johnfitz
+	else if (host_framerate.value > 0)
+		host_frametime = host_framerate.value;
+	else if (host_maxfps.value)// don't allow really long or short frames
+		host_frametime = CLAMP (0.0001, host_frametime, 0.1); //johnfitz -- use CLAMP
 }
 
 void Host_ServerFrame()
@@ -348,26 +387,67 @@ void Host_ServerFrame()
 	SV_SendClientMessages(); // send all messages to the clients
 }
 
+static void Host_PrintTimes (const double times[], const char *names[], int count, qboolean showtotal)
+{
+	char line[1024];
+	double total = 0.0;
+	int i, worst;
+	for (i = 0, worst = -1; i < count; i++) {
+		if (worst == -1 || times[i] > times[worst])
+			worst = i;
+		total += times[i];
+	}
+	if (showtotal)
+		q_snprintf (line, sizeof (line), "%5.2f tot | ", total * 1000.0);
+	else
+		line[0] = '\0';
+	for (i = 0; i < count; i++) {
+		char entry[256];
+		q_snprintf (entry, sizeof (entry), "%5.2f %s", times[i] * 1000.0, names[i]);
+		//if (i == worst)
+		//    COM_TintString (entry, entry, sizeof (entry));
+		if (i != 0)
+			q_strlcat (line, " | ", sizeof (line));
+		q_strlcat (line, entry, sizeof (line));
+	}
+	Con_Printf ("%s\n", line);
+}
+
 void _Host_Frame(float time)
 { // Runs all active servers
+	static double accumtime = 0;
 	static double time1, time2, time3;
+	qboolean ranserver = false;
 	if (setjmp(host_abortserver))
 		return;	// something bad happened, or the server disconnected
 	rand(); // keep the random time dependent
-	if (!Host_FilterTime(time)) // decide the simulation time
-		return;	// don't run too fast, or packets will flood out
+	accumtime += host_netinterval?CLAMP(0.0, (double)time, 0.2):0.0; // for renderer/server isolation
+	Host_AdvanceTime (time);
 	Sys_SendKeyEvents(); // get new key events
 	Cbuf_Execute(); // process console commands
 	NET_Poll();
-	if (sv.active) // if running the server locally, make intentions now
-		CL_SendCmd();
-	if (sv.active) // server operations
-		Host_ServerFrame();
-	// if running the server remotely, send intentions now after
-	// the incoming messages have been read
-	if (!sv.active) // client operations
-		CL_SendCmd();
-	host_time += host_frametime;
+	CL_AccumulateCmd();
+	// Run the server+networking (client->server->client), at a different 
+	// rate from everything else
+	if (accumtime >= host_netinterval) {
+		float realframetime = host_frametime;
+		if (host_netinterval) {
+			host_frametime = q_max(accumtime, (double)host_netinterval);
+			accumtime -= host_frametime;
+			if (host_timescale.value > 0)
+				host_frametime *= host_timescale.value;
+			else if (host_framerate.value)
+				host_frametime = host_framerate.value;
+		}
+		else
+			accumtime -= host_netinterval;
+		CL_SendCmd ();
+		if (sv.active)
+			Host_ServerFrame ();
+		host_frametime = realframetime;
+		Cbuf_Waited();
+		ranserver = true;
+	}
 	if (cls.state == ca_connected) // fetch results from server
 		CL_ReadFromServer();
 	if (host_speeds.value) // update video
@@ -380,13 +460,32 @@ void _Host_Frame(float time)
 		CL_DecayLights();
 	} else
 		S_Update(vec3_origin, vec3_origin, vec3_origin, vec3_origin);
-	if (host_speeds.value) {
-		int pass1 = (time1 - time3) * 1000;
-		time3 = Sys_FloatTime();
-		int pass2 = (time2 - time1) * 1000;
-		int pass3 = (time3 - time2) * 1000;
-		Con_Printf("%3i tot %3i server %3i gfx %3i snd\n",
-			   pass1 + pass2 + pass3, pass1, pass2, pass3);
+	if (host_speeds.value)
+	{
+		static double pass[3] = {0.0, 0.0, 0.0};
+		static double elapsed = 0.0;
+		static int numframes = 0;
+		static int numserverframes = 0;
+		time1 = time2 - time1;
+		time2 = time3 - time2;
+		time3 = Sys_DoubleTime () - time3;
+		if (ranserver || host_speeds.value < 0.f) {
+			pass[0] += time1;
+			numserverframes++;
+		}
+		numframes++;
+		pass[1] += time2;
+		pass[2] += time3;
+		elapsed += time;
+		if (elapsed >= host_speeds.value * 0.375) {
+			const char *names[3] = {"server", "gfx", "snd"};
+			pass[0] /= q_max (numserverframes, 1);
+			pass[1] /= numframes;
+			pass[2] /= numframes;
+			Host_PrintTimes (pass, names, countof (pass), host_speeds.value < 0.f);
+			pass[0] = pass[1] = pass[2] = elapsed = 0.0;
+			numframes = numserverframes = 0;
+		}
 	}
 	host_framecount++;
 }

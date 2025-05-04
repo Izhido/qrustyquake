@@ -32,7 +32,7 @@ void D_DrawSkyScans8(espan_t *pspan)
 		int count = pspan->count;
 		int u = pspan->u; // calculate the initial s & t
 		int v = pspan->v;
-		fixed16_t s, t, snext, tnext;
+		fixed16_t s, t, snext = 0, tnext = 0;
 		D_Sky_uv_To_st(u, v, &s, &t);
 		do {
 			int spancount = count >= SKY_SPAN_MAX ?

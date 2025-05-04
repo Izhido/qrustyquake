@@ -4,7 +4,7 @@
 #ifndef VGATEXT_H
 #define VGATEXT_H
 
-#include <SDL2/SDL.h>
+#include "quakedef.h"
 
 // draw rendered vga text in the specified window. returns -1 on error.
 int vgatext_main(SDL_Window *window, Uint16 *screen);

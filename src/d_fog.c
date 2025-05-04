@@ -103,7 +103,7 @@ unsigned char rgbtoi(unsigned char r, unsigned char g, unsigned char b)
 	return besti;
 }
 
-void Fog_SetPalIndex()
+void Fog_SetPalIndex(cvar_t *cvar)
 {
 	fog_pal_index = rgbtoi_lab(fog_red*255.0f*r_fogbrightness.value,
 			fog_green*255.0f*r_fogbrightness.value,
@@ -173,7 +173,7 @@ void Fog_FogCommand_f () // yanked from Quakespasm, mostly
 	fog_red = r;
 	fog_green = g;
 	fog_blue = b;
-	Fog_SetPalIndex();
+	Fog_SetPalIndex(0);
 	vid.recalc_refdef = 1;
 	fog_initialized = 0;
 }
@@ -212,7 +212,7 @@ void Fog_ParseWorldspawn () // from Quakespasm
 		if (!strcmp("fog", key))
 			sscanf(value, "%f %f %f %f", &fog_density, &fog_red, &fog_green, &fog_blue);
 	}
-	Fog_SetPalIndex();
+	Fog_SetPalIndex(0);
 }
 
 unsigned int lfsr_random() {
@@ -238,7 +238,7 @@ int dither(int x, int y, float f) {
 	return 1; // don't draw
 }
 
-void build_color_mix_lut()
+void build_color_mix_lut(cvar_t *cvar)
 {
 	unsigned char (*convfunc)(unsigned char, unsigned char, unsigned char);
 	if (r_labmixpal.value == 1) {
@@ -274,8 +274,8 @@ void R_InitFog()
 	for (int i = 0; i < RANDARR_SIZE; ++i) // fog bias array
 		randarr[i] = (lfsr_random() & 0xFFFF) / 65535.0f; // LFSR random number normalized to [0,1]
 	if (!fog_lut_built)
-		build_color_mix_lut();
-	Fog_SetPalIndex();
+		build_color_mix_lut(0);
+	Fog_SetPalIndex(0);
 	fog_initialized = 1;
 }
 
